@@ -32,7 +32,7 @@ app.get('/', (req, res) => {
     <button onclick="enviar(0)">DESLIGAR</button>
 
     <script>
-      let ws = new WebSocket("ws://" + location.host);
+      let ws = new WebSocket("wss://" + location.host);
 
       function enviar(cmd){
         ws.send(cmd);

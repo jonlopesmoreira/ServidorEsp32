@@ -8,27 +8,41 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
 let comando = "0";
+const comandosValidos = new Set(["0", "1", "2"]);
+
+function descricaoComando(cmd) {
+  if (cmd === "1") return "FRENTE";
+  if (cmd === "2") return "RE";
+  return "PARAR";
+}
 
 wss.on('connection', (ws) => {
-    console.log("Cliente conectado");
+  console.log("Cliente conectado");
 
-    ws.send(comando);
+  ws.send(comando);
 
-    ws.on('message', (msg) => {
-        comando = msg.toString();
+  ws.on('message', (msg) => {
+    const recebido = msg.toString().trim();
 
-        console.log("Novo comando:", comando);
+    if (!comandosValidos.has(recebido)) {
+      console.log("Comando invalido ignorado:", recebido);
+      return;
+    }
 
-        wss.clients.forEach(client => {
-            if (client.readyState === WebSocket.OPEN) {
-                client.send(comando);
-            }
-        });
+    comando = recebido;
+
+    console.log("Novo comando:", comando, "-", descricaoComando(comando));
+
+    wss.clients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(comando);
+      }
     });
+  });
 });
 
 app.get('/', (req, res) => {
-    res.send(`
+  res.send(`
     <!DOCTYPE html>
     <html lang="pt-BR">
       <head>
@@ -173,7 +187,7 @@ app.get('/', (req, res) => {
 
           .acoes {
             display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 16px;
           }
 
@@ -209,6 +223,10 @@ app.get('/', (req, res) => {
 
           .ligar {
             background: linear-gradient(135deg, #31bf71, #188c4f);
+          }
+
+          .re {
+            background: linear-gradient(135deg, #5b87ff, #2f5ee3);
           }
 
           .desligar {
@@ -274,8 +292,9 @@ app.get('/', (req, res) => {
           </section>
 
           <section class="acoes">
-            <button id="btnLigar" class="ligar" onclick="enviar('1')">LIGAR</button>
-            <button id="btnDesligar" class="desligar" onclick="enviar('0')">DESLIGAR</button>
+            <button id="btnFrente" class="ligar" onclick="enviar('1')">FRENTE</button>
+            <button id="btnParar" class="desligar" onclick="enviar('0')">PARAR</button>
+            <button id="btnRe" class="re" onclick="enviar('2')">RE</button>
           </section>
 
           <p class="dica">O painel recebe atualizacoes em tempo real. Se outro cliente enviar um comando, o estado exibido aqui muda automaticamente.</p>
@@ -286,27 +305,36 @@ app.get('/', (req, res) => {
           const conexao = document.getElementById("conexao");
           const estadoAtual = document.getElementById("estadoAtual");
           const ultimoComando = document.getElementById("ultimoComando");
-          const btnLigar = document.getElementById("btnLigar");
-          const btnDesligar = document.getElementById("btnDesligar");
+          const btnFrente = document.getElementById("btnFrente");
+          const btnParar = document.getElementById("btnParar");
+          const btnRe = document.getElementById("btnRe");
+
+          function textoComando(cmd) {
+            if (cmd === "1") return "FRENTE";
+            if (cmd === "2") return "RE";
+            return "PARAR";
+          }
 
           function atualizarEstado(cmd) {
-            const ligado = cmd === "1";
+            const ativo = cmd !== "0";
 
-            estadoAtual.textContent = ligado ? "Ligado" : "Desligado";
-            estadoAtual.className = "valor " + (ligado ? "ativo" : "inativo");
-            ultimoComando.textContent = ligado ? "LIGAR" : "DESLIGAR";
-            ultimoComando.className = "valor " + (ligado ? "ativo" : "inativo");
+            estadoAtual.textContent = textoComando(cmd);
+            estadoAtual.className = "valor " + (ativo ? "ativo" : "inativo");
+            ultimoComando.textContent = textoComando(cmd);
+            ultimoComando.className = "valor " + (ativo ? "ativo" : "inativo");
 
-            btnLigar.classList.toggle("botao-ativo", ligado);
-            btnDesligar.classList.toggle("botao-ativo", !ligado);
+            btnFrente.classList.toggle("botao-ativo", cmd === "1");
+            btnParar.classList.toggle("botao-ativo", cmd === "0");
+            btnRe.classList.toggle("botao-ativo", cmd === "2");
           }
 
           function definirConexao(status, texto) {
             conexao.className = "conexao " + status;
             conexao.textContent = texto;
             const indisponivel = status !== "online";
-            btnLigar.disabled = indisponivel;
-            btnDesligar.disabled = indisponivel;
+            btnFrente.disabled = indisponivel;
+            btnParar.disabled = indisponivel;
+            btnRe.disabled = indisponivel;
           }
 
           ws.addEventListener("open", () => {
@@ -330,6 +358,10 @@ app.get('/', (req, res) => {
               return;
             }
 
+            if (!["0", "1", "2"].includes(cmd)) {
+              return;
+            }
+
             ws.send(cmd);
             atualizarEstado(cmd);
           }
@@ -344,5 +376,6 @@ app.get('/', (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 server.listen(PORT, () => {
-    console.log("Servidor rodando na porta " + PORT);
+  console.log("Servidor rodando na porta " + PORT);
+  console.log("http://localhost:" + PORT);
 });

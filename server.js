@@ -99,9 +99,9 @@ app.get('/', (req, res) => {
           <div class="velocidade">
             <div class="velocidade-topo">
               <span class="rotulo" style="margin:0">Velocidade</span>
-              <span class="velocidade-valor" id="velValor">200</span>
+              <span class="velocidade-valor" id="velValor">78%</span>
             </div>
-            <input type="range" id="slider" min="5" max="255" value="200"
+            <input type="range" id="slider" min="0" max="100" value="78"
               oninput="atualizarSlider(this.value)" />
           </div>
 
@@ -119,15 +119,19 @@ app.get('/', (req, res) => {
           const slider = document.getElementById("slider");
           const velValor = document.getElementById("velValor");
 
-          let velocidade = 200;
+          let velocidade = 150; // PWM real (30-255)
+
+          function pwmDePercent(pct) {
+            return Math.round(30 + (pct / 100) * (255 - 30));
+          }
 
           function atualizarSlider(v) {
-            velocidade = parseInt(v, 10);
-            velValor.textContent = velocidade;
-            const pct = ((velocidade - 5) / (255 - 5) * 100).toFixed(1);
+            const pct = parseInt(v, 10);
+            velocidade = pwmDePercent(pct);
+            velValor.textContent = pct + '%';
             slider.style.setProperty('--pct', pct + '%');
           }
-          atualizarSlider(200);
+          atualizarSlider(50);
 
           function textoComando(cmd) {
             if (cmd === "0") return "PARAR";

@@ -369,7 +369,7 @@ app.get('/', (req, res) => {
               <span class="rotulo" style="margin:0">Velocidade</span>
               <span class="velocidade-valor" id="velValor">200</span>
             </div>
-            <input type="range" id="slider" min="50" max="255" value="200"
+            <input type="range" id="slider" min="40" max="255" value="200"
               oninput="atualizarSlider(this.value)" />
           </div>
 
@@ -392,7 +392,7 @@ app.get('/', (req, res) => {
           function atualizarSlider(v) {
             velocidade = parseInt(v, 10);
             velValor.textContent = velocidade;
-            const pct = ((velocidade - 50) / (255 - 50) * 100).toFixed(1);
+            const pct = ((velocidade - 40) / (255 - 40) * 100).toFixed(1);
             slider.style.setProperty('--pct', pct + '%');
           }
           atualizarSlider(200);

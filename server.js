@@ -126,6 +126,11 @@ app.get('/', (req, res) => {
             return Math.round(30 + (pct / 100) * (255 - 30));
           }
 
+          function percentDePwm(pwm) {
+            const valor = Math.max(30, Math.min(255, parseInt(pwm, 10) || 30));
+            return Math.round(((valor - 30) / (255 - 30)) * 100);
+          }
+
           function atualizarSlider(v) {
             const pct = parseInt(v, 10);
             slider.value = pct;
@@ -139,7 +144,7 @@ app.get('/', (req, res) => {
             if (cmd === "0") return "PARAR";
             const [dir, vel] = cmd.split(":");
             const nome = dir === "1" ? "FRENTE" : "RE";
-            return vel ? nome + " (" + vel + ")" : nome;
+            return vel ? nome + " (" + percentDePwm(vel) + "%)" : nome;
           }
 
           function atualizarEstado(cmd) {

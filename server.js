@@ -340,10 +340,6 @@ app.get('/', (req, res) => {
       <body>
         <main class="painel">
           <section class="topo">
-            <div>
-              <h1>Controle ESP32</h1>
-              <p class="subtitulo">Acione o dispositivo com botões maiores, leitura clara do estado atual e boa usabilidade tanto no desktop quanto no smartphone.</p>
-            </div>
             <div id="conexao" class="conexao">Conectando</div>
           </section>
 

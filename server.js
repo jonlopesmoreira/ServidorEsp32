@@ -124,7 +124,7 @@ app.get('/', (req, res) => {
           function atualizarSlider(v) {
             velocidade = parseInt(v, 10);
             velValor.textContent = velocidade;
-            const pct = ((velocidade - 10) / (255 - 10) * 100).toFixed(1);
+            const pct = ((velocidade - 5) / (255 - 5) * 100).toFixed(1);
             slider.style.setProperty('--pct', pct + '%');
           }
           atualizarSlider(200);

@@ -1,5 +1,6 @@
 const express = require('express');
 const http = require('http');
+const os = require('os');
 const WebSocket = require('ws');
 
 const app = express();
@@ -199,8 +200,29 @@ app.get('/', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
+const HOST = '0.0.0.0';
 
-server.listen(PORT, () => {
+function obterIpsLocais() {
+  const interfaces = os.networkInterfaces();
+  const ips = [];
+
+  for (const lista of Object.values(interfaces)) {
+    for (const item of lista || []) {
+      if (item.family === 'IPv4' && !item.internal) {
+        ips.push(item.address);
+      }
+    }
+  }
+
+  return [...new Set(ips)];
+}
+
+server.listen(PORT, HOST, () => {
   console.log("Servidor rodando na porta " + PORT);
   console.log("http://localhost:" + PORT);
+
+  const ipsLocais = obterIpsLocais();
+  for (const ip of ipsLocais) {
+    console.log("http://" + ip + ":" + PORT);
+  }
 });

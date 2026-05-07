@@ -119,7 +119,7 @@ app.get('/', (req, res) => {
           const slider = document.getElementById("slider");
           const velValor = document.getElementById("velValor");
 
-          let velocidade = 50; // PWM real (30-255)
+          let velocidade = 0; // PWM real (30-255)
 
           function pwmDePercent(pct) {
             return Math.round(30 + (pct / 100) * (255 - 30));
@@ -127,11 +127,12 @@ app.get('/', (req, res) => {
 
           function atualizarSlider(v) {
             const pct = parseInt(v, 10);
+            slider.value = pct;
             velocidade = pwmDePercent(pct);
             velValor.textContent = pct + '%';
             slider.style.setProperty('--pct', pct + '%');
           }
-          atualizarSlider(50);
+          atualizarSlider(slider.value);
 
           function textoComando(cmd) {
             if (cmd === "0") return "PARAR";

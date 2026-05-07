@@ -8,12 +8,21 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
 let comando = "0";
-const comandosValidos = new Set(["0", "1", "2"]);
+
+function comandoValido(cmd) {
+  if (cmd === "0") return true;
+  const partes = cmd.split(":");
+  if (partes.length !== 2) return false;
+  const dir = partes[0];
+  const vel = parseInt(partes[1], 10);
+  return (dir === "1" || dir === "2") && vel >= 0 && vel <= 255;
+}
 
 function descricaoComando(cmd) {
-  if (cmd === "1") return "FRENTE";
-  if (cmd === "2") return "RE";
-  return "PARAR";
+  if (cmd === "0") return "PARAR";
+  const [dir, vel] = cmd.split(":");
+  const nome = dir === "1" ? "FRENTE" : "RE";
+  return `${nome} velocidade=${vel}`;
 }
 
 wss.on('connection', (ws, req) => {
@@ -31,7 +40,7 @@ wss.on('connection', (ws, req) => {
   ws.on('message', (msg) => {
     const recebido = msg.toString().trim();
 
-    if (!comandosValidos.has(recebido)) {
+    if (!comandoValido(recebido)) {
       console.log("Comando invalido ignorado:", recebido);
       return;
     }
@@ -202,6 +211,53 @@ app.get('/', (req, res) => {
             gap: 16px;
           }
 
+          .velocidade {
+            margin-top: 20px;
+            padding: 18px 20px;
+            border-radius: 22px;
+            background: rgba(255, 255, 255, 0.75);
+            border: 1px solid rgba(25, 50, 74, 0.08);
+          }
+
+          .velocidade-topo {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+          }
+
+          .velocidade-valor {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--blue);
+          }
+
+          input[type=range] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 10px;
+            border-radius: 999px;
+            background: linear-gradient(to right, var(--blue) 0%, var(--blue) var(--pct, 59%), rgba(25,50,74,0.12) var(--pct, 59%), rgba(25,50,74,0.12) 100%);
+            outline: none;
+            cursor: pointer;
+          }
+
+          input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: var(--blue);
+            box-shadow: 0 4px 12px rgba(47,111,237,0.35);
+            cursor: pointer;
+            transition: transform 0.15s;
+          }
+
+          input[type=range]::-webkit-slider-thumb:active {
+            transform: scale(1.2);
+          }
+
           button {
             appearance: none;
             border: 0;
@@ -308,6 +364,15 @@ app.get('/', (req, res) => {
             <button id="btnRe" class="re" onclick="enviar('2')">RE</button>
           </section>
 
+          <div class="velocidade">
+            <div class="velocidade-topo">
+              <span class="rotulo" style="margin:0">Velocidade</span>
+              <span class="velocidade-valor" id="velValor">200</span>
+            </div>
+            <input type="range" id="slider" min="50" max="255" value="200"
+              oninput="atualizarSlider(this.value)" />
+          </div>
+
           <p class="dica">O painel recebe atualizacoes em tempo real. Se outro cliente enviar um comando, o estado exibido aqui muda automaticamente.</p>
         </main>
 
@@ -319,24 +384,38 @@ app.get('/', (req, res) => {
           const btnFrente = document.getElementById("btnFrente");
           const btnParar = document.getElementById("btnParar");
           const btnRe = document.getElementById("btnRe");
+          const slider = document.getElementById("slider");
+          const velValor = document.getElementById("velValor");
+
+          let velocidade = 200;
+
+          function atualizarSlider(v) {
+            velocidade = parseInt(v, 10);
+            velValor.textContent = velocidade;
+            const pct = ((velocidade - 50) / (255 - 50) * 100).toFixed(1);
+            slider.style.setProperty('--pct', pct + '%');
+          }
+          atualizarSlider(200);
 
           function textoComando(cmd) {
-            if (cmd === "1") return "FRENTE";
-            if (cmd === "2") return "RE";
-            return "PARAR";
+            if (cmd === "0") return "PARAR";
+            const [dir, vel] = cmd.split(":");
+            const nome = dir === "1" ? "FRENTE" : "RE";
+            return vel ? nome + " (" + vel + ")" : nome;
           }
 
           function atualizarEstado(cmd) {
             const ativo = cmd !== "0";
+            const dir = cmd.split(":")[0];
 
             estadoAtual.textContent = textoComando(cmd);
             estadoAtual.className = "valor " + (ativo ? "ativo" : "inativo");
             ultimoComando.textContent = textoComando(cmd);
             ultimoComando.className = "valor " + (ativo ? "ativo" : "inativo");
 
-            btnFrente.classList.toggle("botao-ativo", cmd === "1");
+            btnFrente.classList.toggle("botao-ativo", dir === "1");
             btnParar.classList.toggle("botao-ativo", cmd === "0");
-            btnRe.classList.toggle("botao-ativo", cmd === "2");
+            btnRe.classList.toggle("botao-ativo", dir === "2");
           }
 
           function definirConexao(status, texto) {
@@ -346,6 +425,7 @@ app.get('/', (req, res) => {
             btnFrente.disabled = indisponivel;
             btnParar.disabled = indisponivel;
             btnRe.disabled = indisponivel;
+            slider.disabled = indisponivel;
           }
 
           ws.addEventListener("open", () => {
@@ -369,12 +449,9 @@ app.get('/', (req, res) => {
               return;
             }
 
-            if (!["0", "1", "2"].includes(cmd)) {
-              return;
-            }
-
-            ws.send(cmd);
-            atualizarEstado(cmd);
+            const payload = cmd === "0" ? "0" : cmd + ":" + velocidade;
+            ws.send(payload);
+            atualizarEstado(payload);
           }
 
           definirConexao("", "Conectando");

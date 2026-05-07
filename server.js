@@ -16,8 +16,15 @@ function descricaoComando(cmd) {
   return "PARAR";
 }
 
-wss.on('connection', (ws) => {
-  console.log("Cliente conectado");
+wss.on('connection', (ws, req) => {
+  const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress;
+  const agente = req.headers['user-agent'] || 'desconhecido';
+  const isEsp32 = agente.toLowerCase().includes('esp') || !agente.toLowerCase().includes('mozilla');
+
+  ws.clientId = ip;
+  ws.clientTipo = isEsp32 ? 'ESP32' : 'Navegador';
+
+  console.log(`Cliente conectado [${ws.clientTipo}] IP: ${ip}`);
 
   ws.send(comando);
 
@@ -31,13 +38,17 @@ wss.on('connection', (ws) => {
 
     comando = recebido;
 
-    console.log("Novo comando:", comando, "-", descricaoComando(comando));
+    console.log(`Novo comando: ${comando} - ${descricaoComando(comando)} (enviado por [${ws.clientTipo}] ${ws.clientId})`);
 
     wss.clients.forEach(client => {
       if (client.readyState === WebSocket.OPEN) {
         client.send(comando);
       }
     });
+  });
+
+  ws.on('close', () => {
+    console.log(`Cliente desconectado [${ws.clientTipo}] IP: ${ws.clientId}`);
   });
 });
 

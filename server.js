@@ -100,9 +100,9 @@ app.get('/', (req, res) => {
           <div class="velocidade">
             <div class="velocidade-topo">
               <span class="rotulo" style="margin:0">Velocidade</span>
-              <span class="velocidade-valor" id="velValor">78%</span>
+              <span class="velocidade-valor" id="velValor">60%</span>
             </div>
-            <input type="range" id="slider" min="0" max="100" value="78"
+            <input type="range" id="slider" min="0" max="100" value="60"
               oninput="atualizarSlider(this.value)" />
           </div>
 

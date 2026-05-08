@@ -43,6 +43,31 @@ wss.on('connection', (ws, req) => {
   ws.on('message', (msg) => {
     const recebido = msg.toString().trim();
 
+    if (recebido.startsWith('{')) {
+      try {
+        const payload = JSON.parse(recebido);
+        if (payload.type === 'wifiConnect') {
+          const ssid = String(payload.ssid || '').trim();
+          const senha = String(payload.password || '');
+          if (!ssid) {
+            ws.send(JSON.stringify({ type: 'wifiResult', ok: false, error: 'SSID vazio' }));
+            return;
+          }
+          const cmd = `WIFI_CFG|${encodeURIComponent(ssid)}|${encodeURIComponent(senha)}`;
+          let enviados = 0;
+          wss.clients.forEach(client => {
+            if (client.readyState === WebSocket.OPEN && client.clientTipo === 'ESP32') {
+              client.send(cmd);
+              enviados++;
+            }
+          });
+          ws.send(JSON.stringify({ type: 'wifiResult', ok: enviados > 0, targets: enviados }));
+          console.log(`WIFI_CFG enviado para ${enviados} ESP32. SSID: ${ssid}`);
+          return;
+        }
+      } catch (_) { }
+    }
+
     if (!comandoValido(recebido)) {
       console.log("Comando invalido ignorado:", recebido);
       return;
@@ -111,6 +136,23 @@ app.get('/', (req, res) => {
           </div>
 
           <p class="dica">O painel recebe atualizacoes em tempo real. Se outro cliente enviar um comando, o estado exibido aqui muda automaticamente.</p>
+
+          <section class="status" style="margin-top:12px;">
+            <article class="bloco" style="width:100%;">
+              <span class="rotulo">WiFi do ESP32</span>
+              <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
+                <input id="wifiSsid" type="text" placeholder="Nome da rede (SSID)"
+                  style="flex:2; min-width:180px; padding:8px; border:1px solid #ccc; border-radius:6px; font-size:14px;" />
+                <input id="wifiSenha" type="password" placeholder="Senha da rede"
+                  style="flex:2; min-width:180px; padding:8px; border:1px solid #ccc; border-radius:6px; font-size:14px;" />
+                <button onclick="enviarWifi()" style="flex:1; min-width:120px; padding:8px 16px;
+                  background:#1d73be; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:14px;">
+                  Conectar ESP
+                </button>
+              </div>
+              <p id="wifiFeedback" style="margin-top:6px; font-size:13px; color:#555;"></p>
+            </article>
+          </section>
         </main>
 
         <script>
@@ -180,7 +222,19 @@ app.get('/', (req, res) => {
           });
 
           ws.addEventListener("message", (event) => {
-            atualizarEstado(event.data.toString());
+            const raw = event.data.toString();
+            if (raw.startsWith("{")) {
+              try {
+                const data = JSON.parse(raw);
+                if (data.type === "wifiResult") {
+                  const fb = document.getElementById("wifiFeedback");
+                  if (data.ok) fb.textContent = "Credenciais enviadas ao ESP32. Aguardando reconexao...";
+                  else fb.textContent = "Falha: " + (data.error || "nenhum ESP32 conectado");
+                  return;
+                }
+              } catch (_) {}
+            }
+            atualizarEstado(raw);
           });
 
           ws.addEventListener("close", () => {
@@ -199,6 +253,16 @@ app.get('/', (req, res) => {
             const payload = cmd === "0" ? "0" : cmd + ":" + velocidade;
             ws.send(payload);
             atualizarEstado(payload);
+          }
+
+          function enviarWifi() {
+            const ssid = document.getElementById("wifiSsid").value.trim();
+            const senha = document.getElementById("wifiSenha").value;
+            const fb = document.getElementById("wifiFeedback");
+            if (!ssid) { fb.textContent = "Digite o nome da rede."; return; }
+            if (ws.readyState !== WebSocket.OPEN) { fb.textContent = "WebSocket desconectado."; return; }
+            ws.send(JSON.stringify({ type: "wifiConnect", ssid, password: senha }));
+            fb.textContent = "Enviando...";
           }
 
           definirConexao("", "Conectando");

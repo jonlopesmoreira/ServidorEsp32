@@ -64,6 +64,10 @@ wss.on('connection', (ws, req) => {
   });
 });
 
+app.get('/esp-discovery', (req, res) => {
+  res.type('text/plain').send('ESP_SERVER_OK');
+});
+
 app.get('/', (req, res) => {
   res.send(`
     <!DOCTYPE html>
